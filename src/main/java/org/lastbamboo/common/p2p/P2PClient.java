@@ -4,8 +4,12 @@ import java.io.IOException;
 import java.net.URI;
 
 import org.lastbamboo.common.offer.answer.Offerer;
+import org.lastbamboo.common.util.SocketFactory;
 
-public interface P2PSignalingClient extends Offerer {
+/**
+ * General interface for P2P clients.
+ */
+public interface P2PClient extends Offerer, SocketFactory {
 
     /**
      * Registers a given user ID with P2P proxies so that other people can
@@ -40,4 +44,5 @@ public interface P2PSignalingClient extends Offerer {
      * @throws IOException If we could not log in.
      */
     String login(String user, String password) throws IOException;
+    
 }
