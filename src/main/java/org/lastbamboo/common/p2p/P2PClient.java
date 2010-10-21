@@ -45,4 +45,15 @@ public interface P2PClient extends Offerer, SocketFactory {
      */
     String login(String user, String password) throws IOException;
     
+    /**
+     * Logs in to the server.
+     * 
+     * @param user The user name.
+     * @param password The password.
+     * @param id An ID to use to identify this logged-in instance.
+     * @return The JID of the logged in user.
+     * @throws IOException If we could not log in.
+     */
+    String login(String user, String password, String id) throws IOException;
+    
 }
