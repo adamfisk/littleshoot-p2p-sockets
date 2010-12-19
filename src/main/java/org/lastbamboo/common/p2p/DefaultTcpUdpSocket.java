@@ -45,6 +45,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     private final Offerer m_offerer;
     private final OfferAnswer m_offerAnswer;
     private final int m_relayWaitTime;
+    private final long offerTimeoutTime;
     
     /**
      * Creates a new reliable TCP or UDP socket.
@@ -58,8 +59,15 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     public DefaultTcpUdpSocket(final Offerer offerer,
         final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime)
         throws IOException {
+        this(offerer, offerAnswerFactory, relayWaitTime, 20 * 1000);
+    }
+    
+    public DefaultTcpUdpSocket(final Offerer offerer,
+        final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime,
+        final long offerTimeoutTime) throws IOException {
         this.m_offerer = offerer;
         this.m_relayWaitTime = relayWaitTime;
+        this.offerTimeoutTime = offerTimeoutTime;
         try {
             this.m_offerAnswer = offerAnswerFactory.createOfferer(this);
         } catch (final OfferAnswerConnectException e) {
@@ -85,7 +93,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         synchronized (this.m_answerLock) {
             if (!this.m_gotAnswer) {
                 try {
-                    this.m_answerLock.wait(20 * 1000);
+                    this.m_answerLock.wait(this.offerTimeoutTime);
                 } catch (final InterruptedException e) {
                     m_log.error("Interrupted?", e);
                 }
@@ -93,6 +101,8 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         }
         
         if (!this.m_gotAnswer) {
+            // This can happen particularly when we're using XMPP and
+            // Google Talk to negotiate connections. Some just get dropped.
             m_log.info("Did not get an answer from: "+sipUri);
             throw new IOException("Did not get an answer from: "+sipUri);
         }
@@ -170,9 +180,8 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         // response body.
         final ByteBuffer answer = response.getBody();
 
-        m_gotAnswer = true;
-
         synchronized (this.m_answerLock) {
+            m_gotAnswer = true;
             this.m_answerLock.notifyAll();
         }
 
