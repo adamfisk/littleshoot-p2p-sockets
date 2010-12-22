@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.URI;
 
 import org.lastbamboo.common.offer.answer.Offerer;
-import org.lastbamboo.common.util.SocketFactory;
 
 /**
  * General interface for P2P clients.

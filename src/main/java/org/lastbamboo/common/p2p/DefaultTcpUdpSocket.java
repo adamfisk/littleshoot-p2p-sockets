@@ -5,6 +5,7 @@ import java.net.Socket;
 import java.net.URI;
 
 import org.apache.commons.io.IOExceptionWithCause;
+import org.lastbamboo.common.offer.answer.NoAnswerException;
 import org.lastbamboo.common.offer.answer.OfferAnswer;
 import org.lastbamboo.common.offer.answer.OfferAnswerConnectException;
 import org.lastbamboo.common.offer.answer.OfferAnswerFactory;
@@ -75,7 +76,8 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         }
     }
 
-    public Socket newSocket(final URI uri) throws IOException {
+    public Socket newSocket(final URI uri) throws IOException, 
+        NoAnswerException {
         final byte[] offer = this.m_offerAnswer.generateOffer();
         this.m_offerer.offer(uri, offer, this);
         return waitForSocket(uri);
@@ -88,8 +90,10 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
      * @param sipUri The URI we're connecting to.
      * @return The new socket.
      * @throws IOException If there's any problem creating the socket.
+     * @throws NoAnswerException If there's no answer.
      */
-    private Socket waitForSocket(final URI sipUri) throws IOException {
+    private Socket waitForSocket(final URI sipUri) throws IOException, 
+        NoAnswerException {
         synchronized (this.m_answerLock) {
             if (!this.m_gotAnswer) {
                 try {
@@ -104,7 +108,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
             // This can happen particularly when we're using XMPP and
             // Google Talk to negotiate connections. Some just get dropped.
             m_log.info("Did not get an answer from: "+sipUri);
-            throw new IOException("Did not get an answer from: "+sipUri);
+            throw new NoAnswerException("Did not get an answer from: "+sipUri);
         }
 
         m_log.info("Got answer...");
