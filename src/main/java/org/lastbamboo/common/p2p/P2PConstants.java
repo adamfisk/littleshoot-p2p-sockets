@@ -14,5 +14,9 @@ public class P2PConstants {
     public static final int INVITE       = 1;
     public static final int INVITE_OK    = 4;
     public static final int INVITE_ERROR = 16;
+    public static final int CERT_REQUEST = 64;
+    public static final int CERT_RESPONSE = 65;
+    
+    public static final String CERT = "CE";
     
 }
