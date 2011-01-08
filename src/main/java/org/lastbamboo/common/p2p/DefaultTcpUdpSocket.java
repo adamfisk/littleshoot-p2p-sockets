@@ -60,7 +60,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     public DefaultTcpUdpSocket(final Offerer offerer,
         final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime)
         throws IOException {
-        this(offerer, offerAnswerFactory, relayWaitTime, 20 * 1000);
+        this(offerer, offerAnswerFactory, relayWaitTime, 30 * 1000);
     }
     
     public DefaultTcpUdpSocket(final Offerer offerer,
