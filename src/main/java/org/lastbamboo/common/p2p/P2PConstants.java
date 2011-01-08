@@ -19,4 +19,6 @@ public class P2PConstants {
     
     public static final String CERT = "CE";
     
+    public static final String MAC = "MA";
+    
 }
