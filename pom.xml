@@ -22,9 +22,10 @@
         </dependency>
 
         <dependency>
-            <groupId>org.lastbamboo</groupId>
-            <artifactId>lastbamboo-common-util-common</artifactId>
+            <groupId>org.littleshoot</groupId>
+            <artifactId>util</artifactId>
         </dependency>
+
     </dependencies>
 
 </project>
