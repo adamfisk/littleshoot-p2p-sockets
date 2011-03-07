@@ -5,6 +5,7 @@ import java.net.Socket;
 import java.net.URI;
 
 import org.apache.commons.io.IOExceptionWithCause;
+import org.lastbamboo.common.offer.answer.IceMediaStreamDesc;
 import org.lastbamboo.common.offer.answer.NoAnswerException;
 import org.lastbamboo.common.offer.answer.OfferAnswer;
 import org.lastbamboo.common.offer.answer.OfferAnswerConnectException;
@@ -58,19 +59,21 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
      * @throws IOException If there's an error connecting.
      */
     public DefaultTcpUdpSocket(final Offerer offerer,
-        final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime)
+        final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime,
+        final IceMediaStreamDesc desc)
         throws IOException {
-        this(offerer, offerAnswerFactory, relayWaitTime, 30 * 1000);
+        this(offerer, offerAnswerFactory, relayWaitTime, 30 * 1000, desc);
     }
     
     public DefaultTcpUdpSocket(final Offerer offerer,
         final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime,
-        final long offerTimeoutTime) throws IOException {
+        final long offerTimeoutTime, final IceMediaStreamDesc desc) 
+        throws IOException {
         this.m_offerer = offerer;
         this.m_relayWaitTime = relayWaitTime;
         this.offerTimeoutTime = offerTimeoutTime;
         try {
-            this.m_offerAnswer = offerAnswerFactory.createOfferer(this);
+            this.m_offerAnswer = offerAnswerFactory.createOfferer(this, desc);
         } catch (final OfferAnswerConnectException e) {
             throw new IOExceptionWithCause("Could not create offerer", e);
         }
