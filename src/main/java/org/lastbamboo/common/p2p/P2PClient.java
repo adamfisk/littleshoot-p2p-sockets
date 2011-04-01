@@ -1,7 +1,6 @@
 package org.lastbamboo.common.p2p;
 
 import java.io.IOException;
-import java.net.URI;
 
 import org.lastbamboo.common.offer.answer.Offerer;
 
@@ -9,30 +8,6 @@ import org.lastbamboo.common.offer.answer.Offerer;
  * General interface for P2P clients.
  */
 public interface P2PClient extends Offerer, SocketFactory {
-
-    /**
-     * Registers a given user ID with P2P proxies so that other people can
-     * connect to her.
-     *
-     * @param userId The identifier of the user to register.
-     */
-    void register(long userId);
-    
-    /**
-     * Registers a given user ID with P2P proxies so that other people can
-     * connect to her.
-     *
-     * @param userId The identifier of the user to register.
-     */
-    void register(URI sipUri);
-
-    /**
-     * Registers a given user ID with P2P proxies so that other people can
-     * connect to her.
-     *
-     * @param userId The identifier of the user to register.
-     */
-    void register(String id);
     
     /**
      * Logs in to the server.
