@@ -57,7 +57,7 @@ public class DefaultRawUdpServerDepot implements SessionSocketListener,
                         final CallState ts = e.getValue();
                         if (now - ts.getTime() < 30 * 1000) {
                             // Ignore new sockets.
-                            log.info("Not purging now socket");
+                            log.info("Not purging new socket");
                             return;
                         }
                         final Socket sock = ts.getSocket();
@@ -79,7 +79,7 @@ public class DefaultRawUdpServerDepot implements SessionSocketListener,
     }
 
     public void addSocket(final String id, final Socket sock) {
-        log.info("Adding socket!!");
+        log.info("Adding socket with ID: "+id+"to: "+hashCode());
         sessions.put(id, new TimestampedSocket(sock));
     }
     
@@ -111,11 +111,13 @@ public class DefaultRawUdpServerDepot implements SessionSocketListener,
     
     public void read(final String id, final OutputStream outputStream) 
         throws IOException {
+        log.info("Reading data for sessions we have: {}", sessions.containsKey(id));
         final Socket sock = getSocket(id);
         if (sock == null) {
-            log.warn("Call not found!!");
+            log.warn("Call "+id+" not found from "+hashCode()+" in {}", sessions);
             return;
         }
+        log.info("Got socket");
         final InputStream is = sock.getInputStream();
         CommonUtils.threadedCopy(is, outputStream, "Call-Read-Thread");
     }
