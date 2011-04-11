@@ -7,12 +7,13 @@ import java.net.Socket;
 import java.util.Collection;
 
 import org.json.simple.JSONObject;
+import org.littleshoot.util.SessionSocketListener;
 
 /**
  * Interface for accessing sessions/sockets in the class for keeping track
  * of such things.
  */
-public interface RawUdpServerDepot {
+public interface RawUdpServerDepot extends SessionSocketListener{
 
     /**
      * Accessor for the {@link Socket} with the specified ID.

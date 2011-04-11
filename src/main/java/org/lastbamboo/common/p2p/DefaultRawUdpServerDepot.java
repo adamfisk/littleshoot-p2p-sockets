@@ -15,15 +15,13 @@ import org.apache.commons.io.IOUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.littleshoot.util.CommonUtils;
-import org.littleshoot.util.SessionSocketListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * This class accepts incoming, typically relayed raw UDP data connections.
  */
-public class DefaultRawUdpServerDepot implements SessionSocketListener, 
-    RawUdpServerDepot {
+public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
     
@@ -61,7 +59,7 @@ public class DefaultRawUdpServerDepot implements SessionSocketListener,
                             return;
                         }
                         final Socket sock = ts.getSocket();
-                        if (!sock.isConnected()) {
+                        if (sock != null && !sock.isConnected()) {
                             log.info("Removing unconnected socket!");
                             IOUtils.closeQuietly(sock);
                             sessions.remove(e.getKey());
@@ -96,7 +94,7 @@ public class DefaultRawUdpServerDepot implements SessionSocketListener,
     }
 
     public void addError(final String id, final String msg) {
-        log.info("Adding error");
+        log.info("Adding error for "+id+" with msg: "+msg);
         sessions.put(id, new CallError(msg));
     }
     
@@ -123,6 +121,7 @@ public class DefaultRawUdpServerDepot implements SessionSocketListener,
     }
 
     public JSONObject toJson() {
+        log.info("Accessing JSON for sessions: {}", sessions);
         final JSONObject json = new JSONObject();
         final JSONArray calls = new JSONArray();
         for (final Entry<String, CallState> entry : this.sessions.entrySet()) {
