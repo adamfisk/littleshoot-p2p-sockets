@@ -4,7 +4,7 @@
     <artifactId>p2p-sockets</artifactId>
     <packaging>jar</packaging>
     <version>1.0-SNAPSHOT</version>
-    <name>LittleShoot Utilities for Apache Mina</name>
+    <name>LittleShoot P2P Sockets</name>
     <url>http://www.littleshoot.org</url>
 
     <organization>
