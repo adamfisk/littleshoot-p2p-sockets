@@ -21,4 +21,6 @@ public class P2PConstants {
     
     public static final String MAC = "MA";
     
+    public static final String SECRET_KEY = "SK";
+    
 }
