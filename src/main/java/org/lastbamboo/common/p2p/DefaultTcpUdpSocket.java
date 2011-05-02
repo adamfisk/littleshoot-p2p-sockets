@@ -15,6 +15,8 @@ import org.lastbamboo.common.offer.answer.OfferAnswerMessage;
 import org.lastbamboo.common.offer.answer.OfferAnswerTransactionListener;
 import org.lastbamboo.common.offer.answer.Offerer;
 import org.littleshoot.mina.common.ByteBuffer;
+import org.littleshoot.util.CommonUtils;
+import org.littleshoot.util.KeyStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +25,7 @@ import org.slf4j.LoggerFactory;
  * reliable UDP connection, depending on which successfully connects first.
  */
 public class DefaultTcpUdpSocket implements TcpUdpSocket, 
-    OfferAnswerTransactionListener, OfferAnswerListener {
+    OfferAnswerTransactionListener, OfferAnswerListener, KeyStorage {
 
     private final Logger m_log = LoggerFactory.getLogger(getClass());
     private final long m_startTime = System.currentTimeMillis();
@@ -48,6 +50,8 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     private final OfferAnswer m_offerAnswer;
     private final int m_relayWaitTime;
     private final long offerTimeoutTime;
+    private final byte[] writeKey = CommonUtils.generateKey();
+    private byte[] readKey = null;
     
     /**
      * Creates a new reliable TCP or UDP socket.
@@ -82,7 +86,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     public Socket newSocket(final URI uri) throws IOException, 
         NoAnswerException {
         final byte[] offer = this.m_offerAnswer.generateOffer();
-        this.m_offerer.offer(uri, offer, this);
+        this.m_offerer.offer(uri, offer, this, this);
         return waitForSocket(uri);
     }
 
@@ -252,5 +256,17 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         final long elapsedTime = now - this.m_startTime;
 
         return elapsedTime;
+    }
+
+    public byte[] getWriteKey() {
+        return this.writeKey;
+    }
+
+    public byte[] getReadKey() {
+        return this.readKey;
+    }
+
+    public void setReadKey(final byte[] key) {
+        this.readKey = key;
     }
 }

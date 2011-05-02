@@ -9,8 +9,7 @@ import org.lastbamboo.common.offer.answer.NoAnswerException;
 /**
  * Interface for classes that can create P2P sockets.
  */
-public interface TcpUdpSocket
-    {
+public interface TcpUdpSocket {
 
     /**
      * Creates a new socket.
@@ -22,4 +21,4 @@ public interface TcpUdpSocket
      * @throws NoAnswerException If the answerer doesn't reply.
      */
     Socket newSocket(URI uri) throws IOException, NoAnswerException;
-    }
+}
