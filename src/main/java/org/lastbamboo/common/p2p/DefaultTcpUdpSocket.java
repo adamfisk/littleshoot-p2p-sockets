@@ -114,7 +114,8 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         if (!this.m_gotAnswer) {
             // This can happen particularly when we're using XMPP and
             // Google Talk to negotiate connections. Some just get dropped.
-            m_log.info("Did not get an answer from: "+sipUri);
+            m_log.info("Did not get an answer from {} after waiting "+
+                this.offerTimeoutTime, sipUri);
             throw new NoAnswerException("Did not get an answer from: "+sipUri);
         }
 
