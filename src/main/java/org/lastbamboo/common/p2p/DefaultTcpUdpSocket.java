@@ -3,8 +3,10 @@ package org.lastbamboo.common.p2p;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.URI;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.io.IOExceptionWithCause;
+import org.apache.commons.io.IOUtils;
 import org.lastbamboo.common.offer.answer.IceMediaStreamDesc;
 import org.lastbamboo.common.offer.answer.NoAnswerException;
 import org.lastbamboo.common.offer.answer.OfferAnswer;
@@ -43,7 +45,8 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
      */
     private volatile boolean m_gotAnswer;
     
-    private volatile Socket m_socket;
+    private final AtomicReference<Socket> socketRef = 
+        new AtomicReference<Socket>();
     private volatile boolean m_finishedWaitingForSocket;
     
     private final Offerer m_offerer;
@@ -138,7 +141,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
                 }
             }
 
-            if (this.m_socket == null) {
+            if (this.socketRef.get() == null) {
                 // If the socket is still null, we could not create a direct
                 // connection. Instead we'll have to relay the data.
                 m_log.info("Could not create direct connection - using relay!");
@@ -157,7 +160,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
             // If the socket is still null, that means even the relay failed
             // for some reason. This should never happen, but it's of course
             // possible.
-            if (this.m_socket == null) {
+            if (this.socketRef.get() == null) {
                 m_log.warn("Socket is null...");
 
                 // This notifies IceAgentImpl that it should close all its
@@ -167,7 +170,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
                         + sipUri);
             } else {
                 m_log.trace("Returning socket!!");
-                return this.m_socket;
+                return this.socketRef.get();
             }
         }
     }
@@ -214,6 +217,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     }
 
     public void onTcpSocket(final Socket sock) {
+        m_log.info("Got a TCP socket!");
         if (processedSocket(sock)) {
             this.m_offerAnswer.closeUdp();
         } else {
@@ -230,15 +234,16 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     }
 
     private boolean processedSocket(final Socket sock) {
-        if (m_socket != null) {
-            m_log.info("Ignoring socket");
-            try {
-                sock.close();
-            } catch (final IOException e) {
+        m_log.info("Processing socket");
+        synchronized (socketRef) {
+            if (socketRef.get() != null) {
+                m_log.info("Ignoring socket");
+                IOUtils.closeQuietly(sock);
+                return false;
             }
-            return false;
+            socketRef.set(sock);
         }
-        m_socket = sock;
+
         notifySocketLock();
         return true;
     }
