@@ -3,6 +3,8 @@ package org.lastbamboo.common.p2p;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.URI;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.io.IOExceptionWithCause;
@@ -47,7 +49,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     
     private final AtomicReference<Socket> socketRef = 
         new AtomicReference<Socket>();
-    private volatile boolean m_finishedWaitingForSocket;
+    private volatile boolean m_finishedWaitingForSocket = false;
     
     private final Offerer m_offerer;
     private final OfferAnswer m_offerAnswer;
@@ -55,6 +57,14 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     private final long offerTimeoutTime;
     private final byte[] writeKey = CommonUtils.generateKey();
     private byte[] readKey = null;
+    
+    /**
+     * Thread pool for offloading tasks that can't hold up the processing 
+     * threads, particularly the handled of offers and answers that can
+     * block due to the sockets they open.
+     */
+    private static final ExecutorService processingThreadPool = 
+        Executors.newCachedThreadPool();
     
     /**
      * Creates a new reliable TCP or UDP socket.
@@ -89,7 +99,16 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     public Socket newSocket(final URI uri) throws IOException, 
         NoAnswerException {
         final byte[] offer = this.m_offerAnswer.generateOffer();
-        this.m_offerer.offer(uri, offer, this, this);
+        processingThreadPool.submit(new Runnable() {
+            public void run() {
+                try {
+                    m_offerer.offer(uri, offer, DefaultTcpUdpSocket.this, 
+                        DefaultTcpUdpSocket.this);
+                } catch (final IOException e) {
+                    m_log.warn("Error sending offer", e);
+                }                
+            }
+        });
         return waitForSocket(uri);
     }
 
@@ -104,8 +123,10 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
      */
     private Socket waitForSocket(final URI sipUri) throws IOException, 
         NoAnswerException {
+        m_log.info("Waiting for socket -- sent offer.");
         synchronized (this.m_answerLock) {
             if (!this.m_gotAnswer) {
+                m_log.info("Waiting for answer");
                 try {
                     this.m_answerLock.wait(this.offerTimeoutTime);
                 } catch (final InterruptedException e) {
@@ -125,8 +146,10 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         }
 
         m_log.info("Got answer...");
+        
         synchronized (this.m_socketLock) {
-
+            m_log.info("Got socket lock...");
+            
             // We use this flag in case we're notified of the socket before
             // we start waiting. We'd wait forever in that case without this
             // check.
@@ -157,21 +180,22 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
                 }
             }
 
-            // If the socket is still null, that means even the relay failed
-            // for some reason. This should never happen, but it's of course
-            // possible.
-            if (this.socketRef.get() == null) {
-                m_log.warn("Socket is null...");
+        }
+        
+        // If the socket is still null, that means even the relay failed
+        // for some reason. This should never happen, but it's of course
+        // possible.
+        if (this.socketRef.get() == null) {
+            m_log.warn("Socket is null...");
 
-                // This notifies IceAgentImpl that it should close all its
-                // candidates.
-                this.m_offerAnswer.close();
-                throw new IOException("Could not connect to remote host: "
-                        + sipUri);
-            } else {
-                m_log.trace("Returning socket!!");
-                return this.socketRef.get();
-            }
+            // This notifies IceAgentImpl that it should close all its
+            // candidates.
+            this.m_offerAnswer.close();
+            throw new IOException("Could not connect to remote host: "
+                    + sipUri);
+        } else {
+            m_log.trace("Returning socket!!");
+            return this.socketRef.get();
         }
     }
     
@@ -181,7 +205,9 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
      * there's been an error creating the socket.
      */
     private void notifySocketLock() {
+        m_log.info("Waiting for socket lock");
         synchronized (this.m_socketLock) {
+            m_log.info("Got socket lock...notifying...");
             m_finishedWaitingForSocket = true;
             this.m_socketLock.notify();
         }
@@ -203,7 +229,12 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         }
 
         // This is responsible for notifying listeners on errors.
-        this.m_offerAnswer.processAnswer(answer);
+        processingThreadPool.submit(new Runnable() {
+            public void run() {
+                m_offerAnswer.processAnswer(answer);
+            }
+        });
+        //this.m_offerAnswer.processAnswer(answer);
     }
 
     public void onTransactionFailed(final OfferAnswerMessage response) {
@@ -244,6 +275,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
             socketRef.set(sock);
         }
 
+        m_log.info("Notifying socket lock!!");
         notifySocketLock();
         return true;
     }
