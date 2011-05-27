@@ -65,6 +65,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
      */
     private static final ExecutorService processingThreadPool = 
         Executors.newCachedThreadPool();
+    private final IceMediaStreamDesc desc;
     
     /**
      * Creates a new reliable TCP or UDP socket.
@@ -89,6 +90,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         this.m_offerer = offerer;
         this.m_relayWaitTime = relayWaitTime;
         this.offerTimeoutTime = offerTimeoutTime;
+        this.desc = desc;
         try {
             this.m_offerAnswer = offerAnswerFactory.createOfferer(this, desc);
         } catch (final OfferAnswerConnectException e) {
@@ -164,7 +166,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
                 }
             }
 
-            if (this.socketRef.get() == null) {
+            if (this.socketRef.get() == null && this.desc.isUseRelay()) {
                 // If the socket is still null, we could not create a direct
                 // connection. Instead we'll have to relay the data.
                 m_log.info("Could not create direct connection - using relay!");
