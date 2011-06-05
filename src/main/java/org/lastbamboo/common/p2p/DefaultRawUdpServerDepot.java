@@ -102,9 +102,12 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
         throws IOException {
         final Socket sock = getSocket(id);
         if (sock != null) {
+            log.info("Writing from socket: {}", sock.getLocalSocketAddress());
             log.info("Writing to socket output stream!");
             final OutputStream os = sock.getOutputStream();
             CommonUtils.threadedCopy(is, os, "Call-Write-Thread");
+        } else {
+            log.warn("Could not find socket with ID {} in "+sessions, id);
         }
     }
     
@@ -116,7 +119,8 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
             log.warn("Call "+id+" not found from "+hashCode()+" in {}", sessions);
             return;
         }
-        log.info("Got socket");
+        log.info("Got socket -- remote host: {}", 
+            sock.getRemoteSocketAddress());
         final InputStream is = sock.getInputStream();
         //IOUtils.copy(is, outputStream);
         copy(is, outputStream, 100);
