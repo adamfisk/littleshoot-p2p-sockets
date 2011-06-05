@@ -102,6 +102,7 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
         throws IOException {
         final Socket sock = getSocket(id);
         if (sock != null) {
+            log.info("Writing to socket output stream!");
             final OutputStream os = sock.getOutputStream();
             CommonUtils.threadedCopy(is, os, "Call-Write-Thread");
         }
@@ -117,7 +118,8 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
         }
         log.info("Got socket");
         final InputStream is = sock.getInputStream();
-        CommonUtils.threadedCopy(is, outputStream, "Call-Read-Thread");
+        IOUtils.copy(is, outputStream);
+        //CommonUtils.threadedCopy(is, outputStream, "Call-Read-Thread");
     }
 
     public JSONObject toJson() {
