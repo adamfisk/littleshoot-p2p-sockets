@@ -118,8 +118,67 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
         }
         log.info("Got socket");
         final InputStream is = sock.getInputStream();
-        IOUtils.copy(is, outputStream);
+        //IOUtils.copy(is, outputStream);
+        copy(is, outputStream, 100);
         //CommonUtils.threadedCopy(is, outputStream, "Call-Read-Thread");
+    }
+    
+    /**
+     * The default buffer size to use.
+     */
+    private static final int DEFAULT_BUFFER_SIZE = 1024 * 4;
+    /** 
+     * Copies the {@link InputStream} to the specified {@link OutputStream}
+     * for the specified number of bytes or until EOF or exception.
+     * 
+     * @param in The {@link InputStream} to copy from. 
+     * @param out The {@link OutputStream} to copy to.
+     * @param originalByteCount The number of bytes to copy.
+     * @return The number of bytes written.
+     * @throws IOException If there's an IO error copying the bytes.
+     */
+    private long copy(final InputStream in, final OutputStream out,
+            final long originalByteCount) throws IOException {
+        final byte buffer[] = new byte[DEFAULT_BUFFER_SIZE];
+        int len = 0;
+        long written = 0;
+        long byteCount = originalByteCount;
+        try {
+            while (byteCount > 0) {
+                // len = in.read(buffer);
+                if (byteCount < DEFAULT_BUFFER_SIZE) {
+                    len = in.read(buffer, 0, (int) byteCount);
+                } else {
+                    len = in.read(buffer, 0, DEFAULT_BUFFER_SIZE);
+                }
+
+                if (len == -1) {
+                    log.debug("Breaking on length = -1");
+                    // System.out.println("Breaking on -1");
+                    break;
+                }
+
+                byteCount -= len;
+                log.info("Total written: " + written);
+                out.write(buffer, 0, len);
+                written += len;
+                // log.debug("IoUtils now written: "+written);
+            }
+            // System.out.println("Out of while: "+byteCount);
+            return written;
+        } catch (final IOException e) {
+            log.debug("Got IOException during copy after writing " + written
+                    + " of " + originalByteCount, e);
+            e.printStackTrace();
+            throw e;
+        } catch (final RuntimeException e) {
+            log.debug("Runtime error after writing " + written + " of "
+                    + originalByteCount, e);
+            e.printStackTrace();
+            throw e;
+        } finally {
+            out.flush();
+        }
     }
 
     public JSONObject toJson() {
