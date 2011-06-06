@@ -128,18 +128,18 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
         t.start();
     }
     
-    public void read(final String id, final OutputStream outputStream) 
-        throws IOException {
-        log.info("Reading data for sessions we have: {}", sessions.containsKey(id));
+    public long read(final String id, final OutputStream outputStream,
+        final int length) throws IOException {
+        log.info("Reading data...");
         final Socket sock = getSocket(id);
         if (sock == null) {
             log.warn("Call "+id+" not found from "+hashCode()+" in {}", sessions);
-            return;
+            return -1L;
         }
         log.info("Got socket -- remote host: {}", 
             sock.getRemoteSocketAddress());
         final InputStream is = sock.getInputStream();
-        IOUtils.copy(is, outputStream);
+        return copy(is, outputStream, length);
     }
     
     /**

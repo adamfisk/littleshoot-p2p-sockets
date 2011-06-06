@@ -50,5 +50,6 @@ public interface RawUdpServerDepot extends SessionSocketListener{
 
     long write(String id, InputStream is, long contentLength) throws IOException;
 
-    void read(String id, OutputStream outputStream) throws IOException;
+    long read(String id, OutputStream outputStream, int length) 
+        throws IOException;
 }
