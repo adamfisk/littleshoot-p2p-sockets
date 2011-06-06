@@ -14,7 +14,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.io.IOUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import org.littleshoot.util.CommonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,17 +97,35 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
         sessions.put(id, new CallError(msg));
     }
     
-    public void write(final String id, final InputStream is) 
-        throws IOException {
+    public long write(final String id, final InputStream is, 
+        final long contentLength) throws IOException {
         final Socket sock = getSocket(id);
         if (sock != null) {
             log.info("Writing from socket: {}", sock.getLocalSocketAddress());
             log.info("Writing to socket output stream!");
             final OutputStream os = sock.getOutputStream();
-            CommonUtils.threadedCopy(is, os, "Call-Write-Thread");
+            //threadedCopy(is, os, "Call-Write-Thread", contentLength);
+            return copy(is, os, contentLength);
         } else {
             log.warn("Could not find socket with ID {} in "+sessions, id);
+            return -1;
         }
+    }
+    
+    private void threadedCopy(final InputStream is, final OutputStream os,
+        final String threadName, final int contentLength) {
+        final Runnable runner = new Runnable() {
+            public void run() {
+                try {
+                    copy(is, os, contentLength);
+                } catch (final IOException e) {
+                    log.info("Exception on copy. Hung up?", e);
+                }
+            }
+        };
+        final Thread t = new Thread(runner, threadName);
+        t.setDaemon(true);
+        t.start();
     }
     
     public void read(final String id, final OutputStream outputStream) 
@@ -122,9 +139,7 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
         log.info("Got socket -- remote host: {}", 
             sock.getRemoteSocketAddress());
         final InputStream is = sock.getInputStream();
-        //IOUtils.copy(is, outputStream);
-        copy(is, outputStream, 100);
-        //CommonUtils.threadedCopy(is, outputStream, "Call-Read-Thread");
+        IOUtils.copy(is, outputStream);
     }
     
     /**
@@ -155,18 +170,18 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
                 } else {
                     len = in.read(buffer, 0, DEFAULT_BUFFER_SIZE);
                 }
-
+                log.debug("Read {} bytes", len);
                 if (len == -1) {
                     log.debug("Breaking on length = -1");
                     // System.out.println("Breaking on -1");
                     break;
-                }
+                } 
 
                 byteCount -= len;
                 log.info("Total written: " + written);
                 out.write(buffer, 0, len);
                 written += len;
-                // log.debug("IoUtils now written: "+written);
+                log.debug("Now written: "+written);
             }
             // System.out.println("Out of while: "+byteCount);
             return written;

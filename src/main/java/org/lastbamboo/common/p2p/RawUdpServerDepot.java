@@ -48,7 +48,7 @@ public interface RawUdpServerDepot extends SessionSocketListener{
 
     JSONObject toJson();
 
-    void write(String id, InputStream is) throws IOException;
+    long write(String id, InputStream is, long contentLength) throws IOException;
 
     void read(String id, OutputStream outputStream) throws IOException;
 }
