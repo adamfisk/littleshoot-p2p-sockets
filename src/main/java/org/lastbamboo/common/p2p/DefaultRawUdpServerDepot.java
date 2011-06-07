@@ -154,7 +154,11 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
         log.info("Got socket -- remote host: {}", 
             sock.getRemoteSocketAddress());
         final InputStream is = sock.getInputStream();
-        return copy(is, outputStream, length);
+        final byte[] data = new byte[length];
+        final int read = is.read(data);
+        outputStream.write(data, 0, read);
+        return read;
+        //return copy(is, outputStream, length);
     }
     
     /**
