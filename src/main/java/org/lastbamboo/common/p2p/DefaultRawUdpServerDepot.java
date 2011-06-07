@@ -112,6 +112,21 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
         }
     }
     
+    public void write(final String id, final byte[] data) throws IOException {
+        final Socket sock = getSocket(id);
+        if (sock != null) {
+            log.info("Writing from socket: {}", sock.getLocalSocketAddress());
+            log.info("Writing to socket output stream!");
+            final OutputStream os = sock.getOutputStream();
+            //threadedCopy(is, os, "Call-Write-Thread", contentLength);
+            os.write(data);
+            //return copy(is, os, contentLength);
+        } else {
+            log.warn("Could not find socket with ID {} in "+sessions, id);
+        }
+    }
+
+    
     private void threadedCopy(final InputStream is, final OutputStream os,
         final String threadName, final int contentLength) {
         final Runnable runner = new Runnable() {
@@ -261,5 +276,4 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
             return "CONNECTED";
         }
     }
-
 }
