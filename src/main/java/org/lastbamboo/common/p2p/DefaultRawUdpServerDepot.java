@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -77,6 +78,11 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
 
     public void addSocket(final String id, final Socket sock) {
         log.info("Adding socket with ID: "+id+"to: "+hashCode());
+        try {
+            sock.setSoTimeout(50 * 1000);
+        } catch (final SocketException e) {
+            log.warn("Error setting SO TIMEOUT?", e);
+        }
         sessions.put(id, new TimestampedSocket(sock));
     }
     
