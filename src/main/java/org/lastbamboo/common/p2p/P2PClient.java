@@ -7,7 +7,7 @@ import org.lastbamboo.common.offer.answer.Offerer;
 /**
  * General interface for P2P clients.
  */
-public interface P2PClient extends Offerer, SocketFactory {
+public interface P2PClient extends SocketFactory, Offerer {
     
     /**
      * Logs in to the server.
