@@ -142,7 +142,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
             // Google Talk to negotiate connections. Some just get dropped.
             final String msg = 
                 "Did not get an answer from "+sipUri+" after waiting "+
-                this.offerTimeoutTime; 
+                this.offerTimeoutTime + "- Could have detected failure earlier too."; 
             m_log.info(msg);
             throw new NoAnswerException(msg);
         }
@@ -207,7 +207,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
      * there's been an error creating the socket.
      */
     private void notifySocketLock() {
-        m_log.info("Waiting for socket lock");
+        m_log.info("Notifying socket lock");
         synchronized (this.m_socketLock) {
             m_log.info("Got socket lock...notifying...");
             m_finishedWaitingForSocket = true;
@@ -246,6 +246,12 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         // We know the status of the remote host, so make sure the socket
         // fails as quickly as possible.
         notifySocketLock();
+        
+        // Also notify the answer lock which could be waiting separately.
+        synchronized (this.m_answerLock) {
+            this.m_answerLock.notify();
+        }
+
         this.m_offerAnswer.close();
     }
 
