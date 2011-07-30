@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 public class DefaultTcpUdpSocket implements TcpUdpSocket, 
     OfferAnswerTransactionListener, OfferAnswerListener, KeyStorage {
 
-    private final Logger m_log = LoggerFactory.getLogger(getClass());
+    private final Logger log = LoggerFactory.getLogger(getClass());
     private final long m_startTime = System.currentTimeMillis();
     
     private final Object m_socketLock = new Object();
@@ -98,16 +98,18 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         }
     }
 
+    @Override
     public Socket newSocket(final URI uri) throws IOException, 
         NoAnswerException {
         final byte[] offer = this.m_offerAnswer.generateOffer();
         processingThreadPool.submit(new Runnable() {
+            @Override
             public void run() {
                 try {
                     m_offerer.offer(uri, offer, DefaultTcpUdpSocket.this, 
                         DefaultTcpUdpSocket.this);
                 } catch (final IOException e) {
-                    m_log.warn("Error sending offer", e);
+                    log.warn("Error sending offer", e);
                 }                
             }
         });
@@ -125,14 +127,14 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
      */
     private Socket waitForSocket(final URI sipUri) throws IOException, 
         NoAnswerException {
-        m_log.info("Waiting for socket -- sent offer.");
+        log.info("Waiting for socket -- sent offer.");
         synchronized (this.m_answerLock) {
             if (!this.m_gotAnswer) {
-                m_log.info("Waiting for answer");
+                log.info("Waiting for answer");
                 try {
                     this.m_answerLock.wait(this.offerTimeoutTime);
                 } catch (final InterruptedException e) {
-                    m_log.error("Interrupted?", e);
+                    log.error("Interrupted?", e);
                 }
             }
         }
@@ -143,52 +145,51 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
             final String msg = 
                 "Did not get an answer from "+sipUri+" after waiting "+
                 this.offerTimeoutTime + "- Could have detected failure earlier too."; 
-            m_log.info(msg);
+            log.info(msg);
             throw new NoAnswerException(msg);
         }
 
-        m_log.info("Got answer...");
+        log.info("Got answer...");
         
         synchronized (this.m_socketLock) {
-            m_log.info("Got socket lock...");
+            log.info("Got socket lock...");
             
             // We use this flag in case we're notified of the socket before
             // we start waiting. We'd wait forever in that case without this
             // check.
             if (!m_finishedWaitingForSocket) {
-                m_log.trace("Waiting for socket...");
+                log.trace("Waiting for socket...");
                 try {
                     // We add one to make sure we don't sleep forever.
                     m_socketLock.wait((this.m_relayWaitTime * 1000) + 1);
                 } catch (final InterruptedException e) {
                     // Should never happen -- we don't use interrupts here.
-                    m_log.error("Unexpectedly interrupted", e);
+                    log.error("Unexpectedly interrupted", e);
                 }
             }
 
             if (this.socketRef.get() == null && this.desc.isUseRelay()) {
                 // If the socket is still null, we could not create a direct
                 // connection. Instead we'll have to relay the data.
-                m_log.info("Could not create direct connection - using relay!");
+                log.info("Could not create direct connection - using relay!");
                 this.m_offerAnswer.useRelay();
-                m_log.trace("Waiting for socket...");
+                log.trace("Waiting for socket...");
                 // We sometimes have to wait for awhile for resolution,
                 // especially if we're accessing a file from around the world!!
                 try {
                     m_socketLock.wait(35 * 1000);
                 } catch (final InterruptedException e) {
                     // Should never happen -- we don't use interrupts here.
-                    m_log.error("Unexpectedly interrupted", e);
+                    log.error("Unexpectedly interrupted", e);
                 }
             }
-
         }
         
         // If the socket is still null, that means even the relay failed
         // for some reason. This should never happen, but it's of course
         // possible.
         if (this.socketRef.get() == null) {
-            m_log.warn("Socket is null...");
+            log.warn("Socket is null...");
 
             // This notifies IceAgentImpl that it should close all its
             // candidates.
@@ -196,7 +197,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
             throw new IOException("Could not connect to remote host: "
                     + sipUri);
         } else {
-            m_log.trace("Returning socket!!");
+            log.trace("Returning socket!!");
             return this.socketRef.get();
         }
     }
@@ -207,18 +208,19 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
      * there's been an error creating the socket.
      */
     private void notifySocketLock() {
-        m_log.info("Notifying socket lock");
+        log.info("Notifying socket lock");
         synchronized (this.m_socketLock) {
-            m_log.info("Got socket lock...notifying...");
+            log.info("Got socket lock...notifying...");
             m_finishedWaitingForSocket = true;
             this.m_socketLock.notify();
         }
     }
 
+    @Override
     public void onTransactionSucceeded(final OfferAnswerMessage response) {
-        m_log.trace("Received INVITE OK");
+        log.info("Received INVITE OK");
 
-        m_log.debug("Successful transaction after {} milliseconds...",
+        log.debug("Successful transaction after {} milliseconds...",
                 getElapsedTime());
 
         // Determine the ICE candidates for socket creation from the
@@ -232,6 +234,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
 
         // This is responsible for notifying listeners on errors.
         processingThreadPool.submit(new Runnable() {
+            @Override
             public void run() {
                 m_offerAnswer.processAnswer(answer);
             }
@@ -239,8 +242,9 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         //this.m_offerAnswer.processAnswer(answer);
     }
 
+    @Override
     public void onTransactionFailed(final OfferAnswerMessage response) {
-        m_log.warn("Failed transaction after " + getElapsedTime()
+        log.warn("Failed transaction after " + getElapsedTime()
                 + " milliseconds...");
 
         // We know the status of the remote host, so make sure the socket
@@ -255,8 +259,9 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         this.m_offerAnswer.close();
     }
 
+    @Override
     public void onTcpSocket(final Socket sock) {
-        m_log.info("Got a TCP socket!");
+        log.info("Got a TCP socket!");
         if (processedSocket(sock)) {
             this.m_offerAnswer.closeUdp();
         } else {
@@ -264,6 +269,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         }
     }
 
+    @Override
     public void onUdpSocket(final Socket sock) {
         if (processedSocket(sock)) {
             this.m_offerAnswer.closeTcp();
@@ -273,21 +279,22 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     }
 
     private boolean processedSocket(final Socket sock) {
-        m_log.info("Processing socket");
+        log.info("Processing socket");
         synchronized (socketRef) {
             if (socketRef.get() != null) {
-                m_log.info("Ignoring socket");
+                log.info("Ignoring socket");
                 IOUtils.closeQuietly(sock);
                 return false;
             }
             socketRef.set(sock);
         }
 
-        m_log.info("Notifying socket lock!!");
+        log.info("Notifying socket lock!!");
         notifySocketLock();
         return true;
     }
 
+    @Override
     public void onOfferAnswerFailed(final OfferAnswer offerAnswer) {
         notifySocketLock();
         this.m_offerAnswer.close();
@@ -306,14 +313,17 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         return elapsedTime;
     }
 
+    @Override
     public byte[] getWriteKey() {
         return this.writeKey;
     }
 
+    @Override
     public byte[] getReadKey() {
         return this.readKey;
     }
 
+    @Override
     public void setReadKey(final byte[] key) {
         this.readKey = key;
     }
