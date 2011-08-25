@@ -32,28 +32,28 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     OfferAnswerTransactionListener, OfferAnswerListener, KeyStorage {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
-    private final long m_startTime = System.currentTimeMillis();
+    private final long startTime = System.currentTimeMillis();
     
-    private final Object m_socketLock = new Object();
+    private final Object socketLock = new Object();
     
     /**
      * Lock for waiting for just the answer. We then create the socket using
      * the data from the answer.
      */
-    private final Object m_answerLock = new Object();
+    private final Object answerLock = new Object();
     
     /**
      * Flag for whether or not we've received an answer.
      */
-    private volatile boolean m_gotAnswer;
+    private volatile boolean gotAnswer;
     
     private final AtomicReference<Socket> socketRef = 
         new AtomicReference<Socket>();
-    private volatile boolean m_finishedWaitingForSocket = false;
+    private volatile boolean finishedWaitingForSocket = false;
     
-    private final Offerer m_offerer;
-    private final OfferAnswer m_offerAnswer;
-    private final int m_relayWaitTime;
+    private final Offerer offerer;
+    private final OfferAnswer offerAnswer;
+    private final int relayWaitTime;
     private final long offerTimeoutTime;
     private final byte[] writeKey = CommonUtils.generateKey();
     private byte[] readKey = null;
@@ -78,8 +78,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
      */
     public DefaultTcpUdpSocket(final Offerer offerer,
         final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime,
-        final IceMediaStreamDesc desc)
-        throws IOException {
+        final IceMediaStreamDesc desc) throws IOException {
         this(offerer, offerAnswerFactory, relayWaitTime, 30 * 1000, desc);
     }
     
@@ -87,12 +86,12 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime,
         final long offerTimeoutTime, final IceMediaStreamDesc desc) 
         throws IOException {
-        this.m_offerer = offerer;
-        this.m_relayWaitTime = relayWaitTime;
+        this.offerer = offerer;
+        this.relayWaitTime = relayWaitTime;
         this.offerTimeoutTime = offerTimeoutTime;
         this.desc = desc;
         try {
-            this.m_offerAnswer = offerAnswerFactory.createOfferer(this, desc);
+            this.offerAnswer = offerAnswerFactory.createOfferer(this, desc);
         } catch (final OfferAnswerConnectException e) {
             throw new IOExceptionWithCause("Could not create offerer", e);
         }
@@ -101,12 +100,12 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     @Override
     public Socket newSocket(final URI uri) throws IOException, 
         NoAnswerException {
-        final byte[] offer = this.m_offerAnswer.generateOffer();
+        final byte[] offer = this.offerAnswer.generateOffer();
         processingThreadPool.submit(new Runnable() {
             @Override
             public void run() {
                 try {
-                    m_offerer.offer(uri, offer, DefaultTcpUdpSocket.this, 
+                    offerer.offer(uri, offer, DefaultTcpUdpSocket.this, 
                         DefaultTcpUdpSocket.this);
                 } catch (final IOException e) {
                     log.warn("Error sending offer", e);
@@ -128,18 +127,18 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     private Socket waitForSocket(final URI sipUri) throws IOException, 
         NoAnswerException {
         log.info("Waiting for socket -- sent offer.");
-        synchronized (this.m_answerLock) {
-            if (!this.m_gotAnswer) {
+        synchronized (this.answerLock) {
+            if (!this.gotAnswer) {
                 log.info("Waiting for answer");
                 try {
-                    this.m_answerLock.wait(this.offerTimeoutTime);
+                    this.answerLock.wait(this.offerTimeoutTime);
                 } catch (final InterruptedException e) {
                     log.error("Interrupted?", e);
                 }
             }
         }
         
-        if (!this.m_gotAnswer) {
+        if (!this.gotAnswer) {
             // This can happen particularly when we're using XMPP and
             // Google Talk to negotiate connections. Some just get dropped.
             final String msg = 
@@ -151,17 +150,17 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
 
         log.info("Got answer...");
         
-        synchronized (this.m_socketLock) {
+        synchronized (this.socketLock) {
             log.info("Got socket lock...");
             
             // We use this flag in case we're notified of the socket before
             // we start waiting. We'd wait forever in that case without this
             // check.
-            if (!m_finishedWaitingForSocket) {
+            if (!finishedWaitingForSocket) {
                 log.trace("Waiting for socket...");
                 try {
                     // We add one to make sure we don't sleep forever.
-                    m_socketLock.wait((this.m_relayWaitTime * 1000) + 1);
+                    socketLock.wait((this.relayWaitTime * 1000) + 1);
                 } catch (final InterruptedException e) {
                     // Should never happen -- we don't use interrupts here.
                     log.error("Unexpectedly interrupted", e);
@@ -172,12 +171,12 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
                 // If the socket is still null, we could not create a direct
                 // connection. Instead we'll have to relay the data.
                 log.info("Could not create direct connection - using relay!");
-                this.m_offerAnswer.useRelay();
+                this.offerAnswer.useRelay();
                 log.trace("Waiting for socket...");
                 // We sometimes have to wait for awhile for resolution,
                 // especially if we're accessing a file from around the world!!
                 try {
-                    m_socketLock.wait(35 * 1000);
+                    socketLock.wait(35 * 1000);
                 } catch (final InterruptedException e) {
                     // Should never happen -- we don't use interrupts here.
                     log.error("Unexpectedly interrupted", e);
@@ -193,7 +192,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
 
             // This notifies IceAgentImpl that it should close all its
             // candidates.
-            this.m_offerAnswer.close();
+            this.offerAnswer.close();
             throw new IOException("Could not connect to remote host: "
                     + sipUri);
         } else {
@@ -209,10 +208,10 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
      */
     private void notifySocketLock() {
         log.info("Notifying socket lock");
-        synchronized (this.m_socketLock) {
+        synchronized (this.socketLock) {
             log.info("Got socket lock...notifying...");
-            m_finishedWaitingForSocket = true;
-            this.m_socketLock.notify();
+            finishedWaitingForSocket = true;
+            this.socketLock.notify();
         }
     }
 
@@ -227,16 +226,16 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         // response body.
         final ByteBuffer answer = response.getBody();
 
-        synchronized (this.m_answerLock) {
-            m_gotAnswer = true;
-            this.m_answerLock.notifyAll();
+        synchronized (this.answerLock) {
+            gotAnswer = true;
+            this.answerLock.notifyAll();
         }
 
         // This is responsible for notifying listeners on errors.
         processingThreadPool.submit(new Runnable() {
             @Override
             public void run() {
-                m_offerAnswer.processAnswer(answer);
+                offerAnswer.processAnswer(answer);
             }
         });
         //this.m_offerAnswer.processAnswer(answer);
@@ -252,29 +251,29 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         notifySocketLock();
         
         // Also notify the answer lock which could be waiting separately.
-        synchronized (this.m_answerLock) {
-            this.m_answerLock.notify();
+        synchronized (this.answerLock) {
+            this.answerLock.notify();
         }
 
-        this.m_offerAnswer.close();
+        this.offerAnswer.close();
     }
 
     @Override
     public void onTcpSocket(final Socket sock) {
         log.info("Got a TCP socket!");
         if (processedSocket(sock)) {
-            this.m_offerAnswer.closeUdp();
+            this.offerAnswer.closeUdp();
         } else {
-            this.m_offerAnswer.closeTcp();
+            this.offerAnswer.closeTcp();
         }
     }
 
     @Override
     public void onUdpSocket(final Socket sock) {
         if (processedSocket(sock)) {
-            this.m_offerAnswer.closeTcp();
+            this.offerAnswer.closeTcp();
         } else {
-            this.m_offerAnswer.closeUdp();
+            this.offerAnswer.closeUdp();
         }
     }
 
@@ -297,7 +296,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
     @Override
     public void onOfferAnswerFailed(final OfferAnswer offerAnswer) {
         notifySocketLock();
-        this.m_offerAnswer.close();
+        this.offerAnswer.close();
     }
     
     /**
@@ -308,7 +307,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
      */
     private long getElapsedTime() {
         final long now = System.currentTimeMillis();
-        final long elapsedTime = now - this.m_startTime;
+        final long elapsedTime = now - this.startTime;
 
         return elapsedTime;
     }

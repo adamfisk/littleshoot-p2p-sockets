@@ -24,5 +24,9 @@ public class P2PConstants {
     public static final String SECRET_KEY = "SK";
 
     public static final String CONTROL = "C";
+
+    public static final String MAPPED_PORT = "MP";
+
+    public static final String PUBLIC_IP = "PI";
     
 }
