@@ -18,7 +18,6 @@ import org.lastbamboo.common.offer.answer.OfferAnswerListener;
 import org.lastbamboo.common.offer.answer.OfferAnswerMessage;
 import org.lastbamboo.common.offer.answer.OfferAnswerTransactionListener;
 import org.lastbamboo.common.offer.answer.Offerer;
-import org.littleshoot.mina.common.ByteBuffer;
 import org.littleshoot.util.CommonUtils;
 import org.littleshoot.util.KeyStorage;
 import org.slf4j.Logger;
@@ -109,6 +108,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
                         DefaultTcpUdpSocket.this);
                 } catch (final IOException e) {
                     log.warn("Error sending offer", e);
+                    notifySocketLock();
                 }                
             }
         });
@@ -222,10 +222,6 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         log.debug("Successful transaction after {} milliseconds...",
                 getElapsedTime());
 
-        // Determine the ICE candidates for socket creation from the
-        // response body.
-        final ByteBuffer answer = response.getBody();
-
         synchronized (this.answerLock) {
             gotAnswer = true;
             this.answerLock.notifyAll();
@@ -235,7 +231,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         processingThreadPool.submit(new Runnable() {
             @Override
             public void run() {
-                offerAnswer.processAnswer(answer);
+                offerAnswer.processAnswer(response.getBody());
             }
         });
         //this.m_offerAnswer.processAnswer(answer);
@@ -246,15 +242,12 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         log.warn("Failed transaction after " + getElapsedTime()
                 + " milliseconds...");
 
-        // We know the status of the remote host, so make sure the socket
-        // fails as quickly as possible.
-        notifySocketLock();
-        
-        // Also notify the answer lock which could be waiting separately.
+        // This indicates specifically that we haven't received an answer,
+        // so notifying the answer lock will generate an exception.
         synchronized (this.answerLock) {
             this.answerLock.notify();
         }
-
+        
         this.offerAnswer.close();
     }
 
