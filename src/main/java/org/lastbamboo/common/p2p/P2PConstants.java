@@ -28,5 +28,7 @@ public class P2PConstants {
     public static final String MAPPED_PORT = "MP";
 
     public static final String PUBLIC_IP = "PI";
+
+    public static final String TRANSACTION_ID = "TID";
     
 }
