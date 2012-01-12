@@ -30,4 +30,9 @@ public interface P2PClient extends SocketFactory, Offerer {
      */
     String login(String user, String password, String id) throws IOException;
     
+    /**
+     * Logs out the currently logged in user.
+     */
+    void logout();
+    
 }
