@@ -35,4 +35,6 @@ public interface P2PClient extends SocketFactory, Offerer {
      */
     void logout();
     
+    void addListener(P2PConnectionListener listener);
+    
 }
