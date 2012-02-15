@@ -35,6 +35,11 @@ public interface P2PClient extends SocketFactory, Offerer {
      */
     void logout();
     
-    void addListener(P2PConnectionListener listener);
+    /**
+     * Adds a listener for changes to the state of p2p connections.
+     * 
+     * @param listener The listener to add.
+     */
+    void addConnectionListener(P2PConnectionListener listener);
     
 }

@@ -38,4 +38,11 @@ public class P2PConnectionEvent {
         return connected;
     }
 
+    @Override
+    public String toString() {
+        return "P2PConnectionEvent [jid=" + jid + ", incoming=" + incoming
+                + ", remoteSocketAddress=" + remoteSocketAddress
+                + ", connected=" + connected + "]";
+    }
+
 }
