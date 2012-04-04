@@ -2,6 +2,8 @@ package org.lastbamboo.common.p2p;
 
 import java.io.IOException;
 
+import javax.security.auth.login.CredentialException;
+
 import org.lastbamboo.common.offer.answer.Offerer;
 
 /**
@@ -16,8 +18,10 @@ public interface P2PClient extends SocketFactory, Offerer {
      * @param password The password.
      * @return The JID of the logged in user.
      * @throws IOException If we could not log in.
+     * @throws CredentialException If the credentials are wrong.
      */
-    String login(String user, String password) throws IOException;
+    String login(String user, String password) throws IOException, 
+        CredentialException;
     
     /**
      * Logs in to the server.
@@ -27,8 +31,10 @@ public interface P2PClient extends SocketFactory, Offerer {
      * @param id An ID to use to identify this logged-in instance.
      * @return The JID of the logged in user.
      * @throws IOException If we could not log in.
+     * @throws CredentialException If the credentials are wrong.
      */
-    String login(String user, String password, String id) throws IOException;
+    String login(String user, String password, String id) throws IOException, 
+        CredentialException;
     
     /**
      * Logs out the currently logged in user.
