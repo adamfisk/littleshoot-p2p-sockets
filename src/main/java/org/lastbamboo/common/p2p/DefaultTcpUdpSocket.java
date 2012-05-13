@@ -129,7 +129,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
         log.info("Waiting for socket -- sent offer.");
         synchronized (this.answerLock) {
             if (!this.gotAnswer) {
-                log.info("Waiting for answer");
+                log.info("Waiting for answer for "+this.offerTimeoutTime);
                 try {
                     this.answerLock.wait(this.offerTimeoutTime);
                 } catch (final InterruptedException e) {
