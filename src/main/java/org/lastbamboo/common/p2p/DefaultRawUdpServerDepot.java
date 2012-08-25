@@ -286,4 +286,10 @@ public class DefaultRawUdpServerDepot implements RawUdpServerDepot {
             return "CONNECTED";
         }
     }
+
+    @Override
+    public void reconnected() {
+        // TODO Auto-generated method stub
+        
+    }
 }
