@@ -5,6 +5,7 @@ import java.net.Socket;
 import java.net.URI;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.io.IOExceptionWithCause;
@@ -63,7 +64,16 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket,
      * block due to the sockets they open.
      */
     private static final ExecutorService processingThreadPool = 
-        Executors.newCachedThreadPool();
+        Executors.newCachedThreadPool(new ThreadFactory() {
+            private int count = 0;
+            @Override
+            public Thread newThread(Runnable r) {
+                final Thread t = new Thread(r, 
+                    DefaultTcpUdpSocket.class.getSimpleName()+"-"+count++);
+                t.setDaemon(true);
+                return t;
+            }
+        });
     private final IceMediaStreamDesc desc;
     
     /**
