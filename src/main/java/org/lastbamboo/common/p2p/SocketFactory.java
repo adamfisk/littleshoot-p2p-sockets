@@ -1,7 +1,6 @@
 package org.lastbamboo.common.p2p;
 
 import java.io.IOException;
-import java.net.Socket;
 import java.net.URI;
 
 import org.lastbamboo.common.offer.answer.NoAnswerException;
@@ -9,7 +8,7 @@ import org.lastbamboo.common.offer.answer.NoAnswerException;
 /**
  * General factory interface for sockets.
  */
-public interface SocketFactory {
+public interface SocketFactory<T> {
 
     /**
      * Creates a new socket.
@@ -19,7 +18,7 @@ public interface SocketFactory {
      * @throws IOException If there's an error connecting.
      * @throws NoAnswerException If there's no response from the answerer. 
      */
-    Socket newSocket(URI uri) throws IOException, NoAnswerException;
+    T newSocket(URI uri) throws IOException, NoAnswerException;
     
     /**
      * Creates a new "unreliable" socket that, while it uses the Socket 
@@ -30,7 +29,7 @@ public interface SocketFactory {
      * @throws IOException If there's an error connecting.
      * @throws NoAnswerException If there's no response from the answerer. 
      */
-    Socket newUnreliableSocket(URI uri) throws IOException, NoAnswerException;
+    T newUnreliableSocket(URI uri) throws IOException, NoAnswerException;
     
 
     /**
@@ -41,7 +40,7 @@ public interface SocketFactory {
      * @throws IOException If there's an error connecting.
      * @throws NoAnswerException If there's no response from the answerer. 
      */
-    Socket newRawSocket(URI uri) throws IOException, NoAnswerException;
+    T newRawSocket(URI uri) throws IOException, NoAnswerException;
     
     /**
      * Creates a new "unreliable" socket that, while it uses the Socket 
@@ -52,5 +51,5 @@ public interface SocketFactory {
      * @throws IOException If there's an error connecting.
      * @throws NoAnswerException If there's no response from the answerer. 
      */
-    Socket newRawUnreliableSocket(URI uri) throws IOException, NoAnswerException;
+    T newRawUnreliableSocket(URI uri) throws IOException, NoAnswerException;
 }
