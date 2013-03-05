@@ -1,7 +1,7 @@
 package org.lastbamboo.common.p2p;
 
 import java.io.IOException;
-import java.net.Socket;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -9,7 +9,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.io.IOExceptionWithCause;
-import org.apache.commons.io.IOUtils;
 import org.lastbamboo.common.offer.answer.IceMediaStreamDesc;
 import org.lastbamboo.common.offer.answer.NoAnswerException;
 import org.lastbamboo.common.offer.answer.OfferAnswer;
@@ -28,13 +27,13 @@ import org.slf4j.LoggerFactory;
  * Class for creating sockets that can be created using either a TCP or a 
  * reliable UDP connection, depending on which successfully connects first.
  */
-public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>, 
-    OfferAnswerTransactionListener, OfferAnswerListener<Socket>, KeyStorage {
+public class DefaultTcpUdpEndpoint implements TcpUdpSocket<InetSocketAddress>, 
+    OfferAnswerTransactionListener, OfferAnswerListener<InetSocketAddress>, KeyStorage {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
     private final long startTime = System.currentTimeMillis();
     
-    private final Object socketLock = new Object();
+    private final Object endpointLock = new Object();
     
     /**
      * Lock for waiting for just the answer. We then create the socket using
@@ -47,8 +46,8 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
      */
     private volatile boolean gotAnswer;
     
-    private final AtomicReference<Socket> socketRef = 
-        new AtomicReference<Socket>();
+    private final AtomicReference<InetSocketAddress> endpointRef = 
+        new AtomicReference<InetSocketAddress>();
     private volatile boolean finishedWaitingForSocket = false;
     
     private final Offerer offerer;
@@ -69,7 +68,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
             @Override
             public Thread newThread(Runnable r) {
                 final Thread t = new Thread(r, 
-                    DefaultTcpUdpSocket.class.getSimpleName()+"-"+count++);
+                    DefaultTcpUdpEndpoint.class.getSimpleName()+"-"+count++);
                 t.setDaemon(true);
                 return t;
             }
@@ -85,13 +84,13 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
      * relay.
      * @throws IOException If there's an error connecting.
      */
-    public DefaultTcpUdpSocket(final Offerer offerer,
+    public DefaultTcpUdpEndpoint(final Offerer offerer,
         final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime,
         final IceMediaStreamDesc desc) throws IOException {
         this(offerer, offerAnswerFactory, relayWaitTime, 30 * 1000, desc);
     }
     
-    public DefaultTcpUdpSocket(final Offerer offerer,
+    public DefaultTcpUdpEndpoint(final Offerer offerer,
         final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime,
         final long offerTimeoutTime, final IceMediaStreamDesc desc) 
         throws IOException {
@@ -107,22 +106,22 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
     }
 
     @Override
-    public Socket newSocket(final URI uri) throws IOException, 
+    public InetSocketAddress newSocket(final URI uri) throws IOException, 
         NoAnswerException {
         final byte[] offer = this.offerAnswer.generateOffer();
         processingThreadPool.submit(new Runnable() {
             @Override
             public void run() {
                 try {
-                    offerer.offer(uri, offer, DefaultTcpUdpSocket.this, 
-                        DefaultTcpUdpSocket.this);
+                    offerer.offer(uri, offer, DefaultTcpUdpEndpoint.this, 
+                        DefaultTcpUdpEndpoint.this);
                 } catch (final IOException e) {
                     log.warn("Error sending offer", e);
                     notifySocketLock();
                 }                
             }
         });
-        return waitForSocket(uri);
+        return waitForEndpoint(uri);
     }
 
     /**
@@ -134,7 +133,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
      * @throws IOException If there's any problem creating the socket.
      * @throws NoAnswerException If there's no answer.
      */
-    private Socket waitForSocket(final URI sipUri) throws IOException, 
+    private InetSocketAddress waitForEndpoint(final URI sipUri) throws IOException, 
         NoAnswerException {
         log.info("Waiting for socket -- sent offer.");
         synchronized (this.answerLock) {
@@ -153,15 +152,16 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
             // Google Talk to negotiate connections. Some just get dropped.
             final String msg = 
                 "Did not get an answer from "+sipUri+" after waiting "+
-                this.offerTimeoutTime + "- Could have detected failure earlier too."; 
+                this.offerTimeoutTime + 
+                    "- Could have detected failure earlier too."; 
             log.info(msg);
             throw new NoAnswerException(msg);
         }
 
         log.info("Got answer...");
         
-        synchronized (this.socketLock) {
-            log.info("Got socket lock...");
+        synchronized (this.endpointLock) {
+            log.info("Got endpoint lock...");
             
             // We use this flag in case we're notified of the socket before
             // we start waiting. We'd wait forever in that case without this
@@ -170,14 +170,14 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
                 log.trace("Waiting for socket...");
                 try {
                     // We add one to make sure we don't sleep forever.
-                    socketLock.wait((this.relayWaitTime * 1000) + 1);
+                    endpointLock.wait((this.relayWaitTime * 1000) + 1);
                 } catch (final InterruptedException e) {
                     // Should never happen -- we don't use interrupts here.
                     log.error("Unexpectedly interrupted", e);
                 }
             }
 
-            if (this.socketRef.get() == null && this.desc.isUseRelay()) {
+            if (this.endpointRef.get() == null && this.desc.isUseRelay()) {
                 // If the socket is still null, we could not create a direct
                 // connection. Instead we'll have to relay the data.
                 log.info("Could not create direct connection - using relay!");
@@ -186,7 +186,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
                 // We sometimes have to wait for awhile for resolution,
                 // especially if we're accessing a file from around the world!!
                 try {
-                    socketLock.wait(35 * 1000);
+                    endpointLock.wait(35 * 1000);
                 } catch (final InterruptedException e) {
                     // Should never happen -- we don't use interrupts here.
                     log.error("Unexpectedly interrupted", e);
@@ -197,7 +197,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
         // If the socket is still null, that means even the relay failed
         // for some reason. This should never happen, but it's of course
         // possible.
-        if (this.socketRef.get() == null) {
+        if (this.endpointRef.get() == null) {
             log.warn("Socket is null...");
 
             // This notifies IceAgentImpl that it should close all its
@@ -207,7 +207,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
                     + sipUri);
         } else {
             log.trace("Returning socket!!");
-            return this.socketRef.get();
+            return this.endpointRef.get();
         }
     }
     
@@ -218,10 +218,10 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
      */
     private void notifySocketLock() {
         log.info("Notifying socket lock");
-        synchronized (this.socketLock) {
+        synchronized (this.endpointLock) {
             log.info("Got socket lock...notifying...");
             finishedWaitingForSocket = true;
-            this.socketLock.notify();
+            this.endpointLock.notify();
         }
     }
 
@@ -262,7 +262,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
     }
 
     @Override
-    public void onTcpSocket(final Socket sock) {
+    public void onTcpSocket(final InetSocketAddress sock) {
         log.info("Got a TCP socket!");
         if (processedSocket(sock)) {
             this.offerAnswer.closeUdp();
@@ -272,7 +272,7 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
     }
 
     @Override
-    public void onUdpSocket(final Socket sock) {
+    public void onUdpSocket(final InetSocketAddress sock) {
         if (processedSocket(sock)) {
             this.offerAnswer.closeTcp();
         } else {
@@ -280,15 +280,14 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
         }
     }
 
-    private boolean processedSocket(final Socket sock) {
+    private boolean processedSocket(final InetSocketAddress sock) {
         log.info("Processing socket");
-        synchronized (socketRef) {
-            if (socketRef.get() != null) {
+        synchronized (endpointRef) {
+            if (endpointRef.get() != null) {
                 log.info("Ignoring socket");
-                IOUtils.closeQuietly(sock);
                 return false;
             }
-            socketRef.set(sock);
+            endpointRef.set(sock);
         }
 
         log.info("Notifying socket lock!!");
