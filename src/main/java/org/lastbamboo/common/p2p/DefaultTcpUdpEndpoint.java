@@ -1,7 +1,6 @@
 package org.lastbamboo.common.p2p;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -19,6 +18,7 @@ import org.lastbamboo.common.offer.answer.OfferAnswerMessage;
 import org.lastbamboo.common.offer.answer.OfferAnswerTransactionListener;
 import org.lastbamboo.common.offer.answer.Offerer;
 import org.littleshoot.util.CommonUtils;
+import org.littleshoot.util.FiveTuple;
 import org.littleshoot.util.KeyStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,8 +27,8 @@ import org.slf4j.LoggerFactory;
  * Class for creating sockets that can be created using either a TCP or a 
  * reliable UDP connection, depending on which successfully connects first.
  */
-public class DefaultTcpUdpEndpoint implements TcpUdpSocket<InetSocketAddress>, 
-    OfferAnswerTransactionListener, OfferAnswerListener<InetSocketAddress>, KeyStorage {
+public class DefaultTcpUdpEndpoint implements TcpUdpSocket<FiveTuple>, 
+    OfferAnswerTransactionListener, OfferAnswerListener<FiveTuple>, KeyStorage {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
     private final long startTime = System.currentTimeMillis();
@@ -46,8 +46,8 @@ public class DefaultTcpUdpEndpoint implements TcpUdpSocket<InetSocketAddress>,
      */
     private volatile boolean gotAnswer;
     
-    private final AtomicReference<InetSocketAddress> endpointRef = 
-        new AtomicReference<InetSocketAddress>();
+    private final AtomicReference<FiveTuple> endpointRef = 
+        new AtomicReference<FiveTuple>();
     private volatile boolean finishedWaitingForSocket = false;
     
     private final Offerer offerer;
@@ -85,13 +85,13 @@ public class DefaultTcpUdpEndpoint implements TcpUdpSocket<InetSocketAddress>,
      * @throws IOException If there's an error connecting.
      */
     public DefaultTcpUdpEndpoint(final Offerer offerer,
-        final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime,
+        final OfferAnswerFactory<FiveTuple> offerAnswerFactory, final int relayWaitTime,
         final IceMediaStreamDesc desc) throws IOException {
         this(offerer, offerAnswerFactory, relayWaitTime, 30 * 1000, desc);
     }
     
     public DefaultTcpUdpEndpoint(final Offerer offerer,
-        final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime,
+        final OfferAnswerFactory<FiveTuple> offerAnswerFactory, final int relayWaitTime,
         final long offerTimeoutTime, final IceMediaStreamDesc desc) 
         throws IOException {
         this.offerer = offerer;
@@ -106,7 +106,7 @@ public class DefaultTcpUdpEndpoint implements TcpUdpSocket<InetSocketAddress>,
     }
 
     @Override
-    public InetSocketAddress newSocket(final URI uri) throws IOException, 
+    public FiveTuple newSocket(final URI uri) throws IOException, 
         NoAnswerException {
         final byte[] offer = this.offerAnswer.generateOffer();
         processingThreadPool.submit(new Runnable() {
@@ -133,7 +133,7 @@ public class DefaultTcpUdpEndpoint implements TcpUdpSocket<InetSocketAddress>,
      * @throws IOException If there's any problem creating the socket.
      * @throws NoAnswerException If there's no answer.
      */
-    private InetSocketAddress waitForEndpoint(final URI sipUri) throws IOException, 
+    private FiveTuple waitForEndpoint(final URI sipUri) throws IOException, 
         NoAnswerException {
         log.info("Waiting for socket -- sent offer.");
         synchronized (this.answerLock) {
@@ -262,7 +262,7 @@ public class DefaultTcpUdpEndpoint implements TcpUdpSocket<InetSocketAddress>,
     }
 
     @Override
-    public void onTcpSocket(final InetSocketAddress sock) {
+    public void onTcpSocket(final FiveTuple sock) {
         log.info("Got a TCP socket!");
         if (processedSocket(sock)) {
             this.offerAnswer.closeUdp();
@@ -272,7 +272,7 @@ public class DefaultTcpUdpEndpoint implements TcpUdpSocket<InetSocketAddress>,
     }
 
     @Override
-    public void onUdpSocket(final InetSocketAddress sock) {
+    public void onUdpSocket(final FiveTuple sock) {
         if (processedSocket(sock)) {
             this.offerAnswer.closeTcp();
         } else {
@@ -280,7 +280,7 @@ public class DefaultTcpUdpEndpoint implements TcpUdpSocket<InetSocketAddress>,
         }
     }
 
-    private boolean processedSocket(final InetSocketAddress sock) {
+    private boolean processedSocket(final FiveTuple sock) {
         log.info("Processing socket");
         synchronized (endpointRef) {
             if (endpointRef.get() != null) {
