@@ -86,13 +86,13 @@ public class DefaultTcpUdpSocket implements TcpUdpSocket<Socket>,
      * @throws IOException If there's an error connecting.
      */
     public DefaultTcpUdpSocket(final Offerer offerer,
-        final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime,
+        final OfferAnswerFactory<Socket> offerAnswerFactory, final int relayWaitTime,
         final IceMediaStreamDesc desc) throws IOException {
         this(offerer, offerAnswerFactory, relayWaitTime, 30 * 1000, desc);
     }
     
     public DefaultTcpUdpSocket(final Offerer offerer,
-        final OfferAnswerFactory offerAnswerFactory, final int relayWaitTime,
+        final OfferAnswerFactory<Socket> offerAnswerFactory, final int relayWaitTime,
         final long offerTimeoutTime, final IceMediaStreamDesc desc) 
         throws IOException {
         this.offerer = offerer;
