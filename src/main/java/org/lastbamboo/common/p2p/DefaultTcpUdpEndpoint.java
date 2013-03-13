@@ -1,6 +1,8 @@
 package org.lastbamboo.common.p2p;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.URI;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -8,6 +10,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.io.IOExceptionWithCause;
+import org.apache.commons.io.IOUtils;
 import org.lastbamboo.common.offer.answer.IceMediaStreamDesc;
 import org.lastbamboo.common.offer.answer.NoAnswerException;
 import org.lastbamboo.common.offer.answer.OfferAnswer;
@@ -19,6 +22,7 @@ import org.lastbamboo.common.offer.answer.OfferAnswerTransactionListener;
 import org.lastbamboo.common.offer.answer.Offerer;
 import org.littleshoot.util.CommonUtils;
 import org.littleshoot.util.FiveTuple;
+import org.littleshoot.util.FiveTuple.Protocol;
 import org.littleshoot.util.KeyStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -262,9 +266,17 @@ public class DefaultTcpUdpEndpoint implements TcpUdpSocket<FiveTuple>,
     }
 
     @Override
-    public void onTcpSocket(final FiveTuple sock) {
+    public void onTcpSocket(final Socket sock) {
         log.info("Got a TCP socket!");
-        if (processedSocket(sock)) {
+        final FiveTuple tuple = 
+            new FiveTuple((InetSocketAddress)sock.getLocalSocketAddress(), 
+                (InetSocketAddress)sock.getRemoteSocketAddress(), Protocol.TCP);
+        
+        // This incoming socket is just treated as a test socket to make sure
+        // the mapping is fully working. We just close it and use the
+        // FiveTuple from here.
+        IOUtils.closeQuietly(sock);
+        if (processedSocket(tuple)) {
             this.offerAnswer.closeUdp();
         } else {
             this.offerAnswer.closeTcp();
